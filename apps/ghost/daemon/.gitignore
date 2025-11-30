@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+
+# Build
+dist/
+build/
+out/
+make/
+*.tsbuildinfo
+
+# Environment
+.env
+.env.*
+!.env.example
+config.json
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Testing
+coverage/
+
+# OS
+.DS_Store
+Thumbs.db
