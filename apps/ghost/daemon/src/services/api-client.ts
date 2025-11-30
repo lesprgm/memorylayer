@@ -1,0 +1,170 @@
+import axios, { AxiosInstance } from 'axios';
+import crypto from 'node:crypto';
+import type {
+  ActionResult,
+  CommandRequest,
+  CommandResponse,
+  DashboardData,
+  FileIndexRequest,
+  FileMetadata,
+  Result,
+} from '../types';
+import type { DaemonConfig } from '../types';
+
+/**
+ * Thin HTTP client for communicating with the Ghost backend.
+ */
+export class GhostAPIClient {
+  private client: AxiosInstance;
+  private userId: string;
+
+  constructor(private config: DaemonConfig) {
+    this.client = axios.create({
+      baseURL: config.backend.url,
+      timeout: 10_000,
+      headers: {
+        Authorization: `Bearer ${config.backend.apiKey}`,
+        'Content-Type': 'application/json',
+      },
+    });
+    this.userId = config.user.id;
+  }
+
+  async sendCommand(text: string, screenContext?: string, screenshotPath?: string): Promise<Result<CommandResponse, any>> {
+    const payload: CommandRequest = {
+      user_id: this.userId,
+      command_id: crypto.randomUUID(),
+      text,
+      timestamp: new Date().toISOString(),
+      screen_context: screenContext,
+      screenshot_path: screenshotPath,
+      meta: {
+        source: 'voice',
+        client_version: '0.1.0',
+      },
+    };
+
+    try {
+      const response = await this.client.post<CommandResponse>('/api/command', payload);
+      return { ok: true, value: response.data };
+    } catch (error) {
+      return { ok: false, error };
+    }
+  }
+
+  /**
+   * Streaming version of sendCommand using SSE-style chunks.
+   * Emits token events via onToken; resolves with the final CommandResponse.
+   */
+  async sendCommandStream(
+    text: string,
+    onToken?: (token: string) => void,
+    screenContext?: string,
+    screenshotPath?: string
+  ): Promise<Result<CommandResponse, any>> {
+    const payload: CommandRequest = {
+      user_id: this.userId,
+      command_id: crypto.randomUUID(),
+      text,
+      timestamp: new Date().toISOString(),
+      screen_context: screenContext,
+      screenshot_path: screenshotPath,
+      meta: {
+        source: 'voice',
+        client_version: '0.1.0',
+      },
+    };
+
+    try {
+      const resp = await fetch(`${this.config.backend.url}/api/command/stream`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${this.config.backend.apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!resp.ok || !resp.body) {
+        return { ok: false, error: new Error(`HTTP ${resp.status}`) };
+      }
+
+      const reader = resp.body.getReader();
+      let buffer = '';
+      let finalResponse: CommandResponse | null = null;
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += new TextDecoder().decode(value);
+
+        let idx: number;
+        while ((idx = buffer.indexOf('\n\n')) !== -1) {
+          const rawEvent = buffer.slice(0, idx);
+          buffer = buffer.slice(idx + 2);
+          const { event, data } = parseSSE(rawEvent);
+          if (!event || !data) continue;
+
+          if (event === 'token') {
+            try {
+              const parsed = JSON.parse(data) as { text: string };
+              if (parsed.text && onToken) onToken(parsed.text);
+            } catch (e) {
+              console.warn('Failed to parse token event', e);
+            }
+          } else if (event === 'final') {
+            try {
+              finalResponse = JSON.parse(data) as CommandResponse;
+            } catch (e) {
+              return { ok: false, error: e };
+            }
+          } else if (event === 'error') {
+            return { ok: false, error: new Error(data) };
+          }
+        }
+      }
+
+      if (finalResponse) {
+        return { ok: true, value: finalResponse };
+      }
+      return { ok: false, error: new Error('Stream ended without final response') };
+    } catch (error) {
+      return { ok: false, error };
+    }
+  }
+
+  async indexFiles(files: FileMetadata[]): Promise<Result<{ indexed: number }, any>> {
+    const payload: FileIndexRequest = { user_id: this.userId, files };
+    try {
+      const response = await this.client.post('/api/files/index', payload);
+      return { ok: true, value: response.data };
+    } catch (error) {
+      return { ok: false, error };
+    }
+  }
+
+  async sendActionResults(commandId: string, actions: ActionResult[]): Promise<void> {
+    // Placeholder for future logging endpoint
+    console.debug('Action results for', commandId, actions);
+  }
+
+  async getDashboardData(): Promise<Result<DashboardData, any>> {
+    try {
+      const response = await this.client.get<DashboardData>('/api/dashboard/commands');
+      return { ok: true, value: response.data };
+    } catch (error) {
+      return { ok: false, error };
+    }
+  }
+}
+
+function parseSSE(raw: string): { event: string | null; data: string | null } {
+  const lines = raw.split('\n').map((l) => l.trim());
+  let event: string | null = null;
+  let data: string | null = null;
+  for (const line of lines) {
+    if (line.startsWith('event:')) event = line.slice('event:'.length).trim();
+    else if (line.startsWith('data:')) data = line.slice('data:'.length).trim();
+  }
+  return { event, data };
+}
