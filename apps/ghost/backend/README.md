@@ -70,3 +70,9 @@ Ghost uses SQLite with the following key tables:
 - `explanation_contexts` - AI reasoning explanations
 
 Screenshot memories are stored as type `context.screen` with metadata containing the file path.
+
+---
+
+## Development Approach
+
+This backend is part of the Ghost application, which was developed using Kiro's spec-driven development methodology. See the [main Ghost README](../README.md#development-approach) for complete details on the specification-driven development process and architecture decisions.

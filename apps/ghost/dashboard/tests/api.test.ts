@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 const axiosMock = vi.hoisted(() => ({
   get: vi.fn(),
@@ -35,5 +35,68 @@ describe('fetchDashboardData', () => {
 
     expect(axiosMock.get).toHaveBeenCalledWith('/api/dashboard/commands', { params: { limit: 50 } });
     expect(result).toEqual(mockData);
+  });
+
+  describe('streamLatestCommand', () => {
+    beforeEach(() => {
+      // Mock EventSource globally
+      (global as any).EventSource = vi.fn();
+    });
+
+    it('connects to EventSource and handles messages', () => {
+      const mockEventSource = {
+        onmessage: null as any,
+        onerror: null as any,
+        close: vi.fn(),
+      };
+      (global.EventSource as any).mockImplementation(() => mockEventSource);
+
+      const callbacks = {
+        onToken: vi.fn(),
+        onFinal: vi.fn(),
+        onError: vi.fn(),
+      };
+
+      const { streamLatestCommand } = require('../src/api');
+      const close = streamLatestCommand(callbacks);
+
+      expect(global.EventSource).toHaveBeenCalledWith('/api/command/stream/latest');
+
+      // Simulate token event
+      mockEventSource.onmessage({ data: JSON.stringify({ type: 'token', content: 'Hello' }) });
+      expect(callbacks.onToken).toHaveBeenCalledWith('Hello');
+
+      // Simulate final event
+      const mockCommand = { id: '123', text: 'Hi' };
+      mockEventSource.onmessage({ data: JSON.stringify({ type: 'final', content: mockCommand }) });
+      expect(callbacks.onFinal).toHaveBeenCalledWith(mockCommand);
+
+      // Cleanup
+      close();
+      expect(mockEventSource.close).toHaveBeenCalled();
+    });
+
+    it('handles connection errors', () => {
+      const mockEventSource = {
+        onmessage: null,
+        onerror: null as any,
+        close: vi.fn(),
+      };
+      (global.EventSource as any).mockImplementation(() => mockEventSource);
+
+      const callbacks = {
+        onToken: vi.fn(),
+        onFinal: vi.fn(),
+        onError: vi.fn(),
+      };
+
+      const { streamLatestCommand } = require('../src/api');
+      streamLatestCommand(callbacks);
+
+      // Simulate error
+      const error = new Error('Connection failed');
+      mockEventSource.onerror(error);
+      expect(callbacks.onError).toHaveBeenCalledWith(error);
+    });
   });
 });

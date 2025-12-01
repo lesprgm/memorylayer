@@ -19,7 +19,7 @@ That's it. Deploy anywhere (SQLite local, Postgres cloud), swap any piece (datab
 
 **Proven in production**: Powers both [Ghost](apps/ghost) (blog CMS) and [Handoff](apps/handoff-frontend) (conversation manager)—two completely different apps built on the same skeleton.
 
-[📖 Getting Started](docs/GETTING_STARTED.md) | [🏗️ Architecture](docs/ARCHITECTURE.md) | [📦 Core Package](packages/core/README.md)
+[Getting Started](docs/GETTING_STARTED.md) | [Architecture](docs/ARCHITECTURE.md) | [Core Package](packages/core/README.md)
 
 ---
 
@@ -39,7 +39,7 @@ You can use it to power personal agents, team workspaces, support tools, or any 
 
 Unlike existing memory solutions, MemoryLayer is **actually proven** with two production apps and offers features nobody else combines:
 
-### ✨ Unique Features
+### Unique Features
 
 1. **SQLite + Postgres with Same Code**
    - Dev: `storage: 'sqlite://dev.db'`
@@ -69,7 +69,7 @@ Unlike existing memory solutions, MemoryLayer is **actually proven** with two pr
 
 6. **MAKER Reliability Layer** (NEW)
    - Multi-agent consensus for robust extraction
-   - 3 parallel Gemini Flash-8B calls + voting
+   - 3 parallel Gemini 2.0 Flash Lite calls + voting
    - Graceful fallback on failures
    - 51 tests (22 unit + 7 integration + 15 stress)
 
@@ -79,19 +79,6 @@ Unlike existing memory solutions, MemoryLayer is **actually proven** with two pr
    - Add extraction when ready (LLM costs)
    - Or use `@memorylayer/core` for all-in-one
 
-### 📊 Comparison
-
-| Feature | Mem0 | Zep | LangChain | **MemoryLayer** |
-|---------|------|-----|-----------|-------------|
-| SQLite Support | ❌ | ❌ | ❌ | ✅ |
-| Postgres Support | ✅ | ✅ | ✅ | ✅ |
-| Local Embeddings | ❌ | ❌ | ❌ | ✅ |
-| Modular Packages | ❌ | ❌ | Partial | ✅ |
-| Custom Memory Types | ❌ | ❌ | ❌ | ✅ |
-| Large Convo Chunking | ❌ | ❌ | ❌ | ✅ |
-| **MAKER Reliability** | ❌ | ❌ | ❌ | ✅ |
-| Two Production Apps | ❌ | ❌ | ❌ | ✅ |
-| Self-Hostable | Partial | ❌ | ✅ | ✅ |
 
 **Bottom line**: MemoryLayer is the only solution that's local-first, database-agnostic, AND proven with multiple production apps.
 
@@ -103,7 +90,7 @@ Unlike existing memory solutions, MemoryLayer is **actually proven** with two pr
 
 ### How It Works
 
-1. **Microagents**: Launches 3 parallel Gemini Flash-8B calls with identical prompts
+1. **Microagents**: Launches 3 parallel Gemini 2.0 Flash Lite calls with identical prompts
 2. **Red-Flagging**: Validates each response (schema checks, content quality)
 3. **Voting**: Selects consensus result based on decision/todo overlap
 4. **Graceful Fallback**: Returns null if all agents fail
@@ -112,17 +99,17 @@ Unlike existing memory solutions, MemoryLayer is **actually proven** with two pr
 - Improved reliability through redundancy
 - Error correction via consensus voting
 - Minimal latency overhead (parallel execution)
-- Low cost (~$0.0003 per extraction using Flash-8B)
+- Low cost with Gemini 2.0 Flash Lite
 
 **Configuration** (environment variables):
 ```bash
 MAKER_ENABLED=true              # Enable/disable MAKER
 MAKER_REPLICAS=3                # Number of parallel microagents
 MAKER_TEMPERATURE=0.4           # LLM temperature
-MAKER_MODEL=gemini-1.5-flash-8b # Model to use
+MAKER_MODEL=gemini-2.0-flash-lite # Model to use
 ```
 
-**Test Coverage**: 51 tests (all passing ✓)
+**Test Coverage**: 51 tests (all passing)
 - 22 unit tests (validation, voting, orchestration)
 - 7 integration tests (full E2E flow)
 - 15 stress tests (100 sequential, 50 concurrent, failure modes)
@@ -188,10 +175,10 @@ Both were built on the same foundation with zero code duplication.
 
 **Key properties:**
 
-- ✅ **Deploy anywhere** – SQLite locally or Postgres in the cloud  
-- ✅ **Modular** – use what you need, swap what you don't  
-- ✅ **Model‑agnostic** – OpenAI, Anthropic, Gemini, or your own provider  
-- ✅ **Framework‑agnostic** – works with Express, Next.js, Deno, Bun, plain Node
+- **Deploy anywhere** – SQLite locally or Postgres in the cloud  
+- **Modular** – use what you need, swap what you don't  
+- **Model-agnostic** – OpenAI, Anthropic, Gemini, or your own provider  
+- **Framework-agnostic** – works with Express, Next.js, Deno, Bun, plain Node
 
 ---
 
@@ -231,10 +218,44 @@ Both were built on the same foundation with zero code duplication.
     - a desktop daemon (Electron) with voice STT/TTS,
     - and a dashboard that shows commands, actions, and the memories used (including streaming output tokens).
 
-- **Spec-driven development with Kiro**
-  - `.kiro/specs/` contains the design, requirements, and task breakdowns for storage, context-engine, memory-extraction, chat-capture, Ghost, and Handoff.
-  - The public APIs, data models, and folder structure in `packages/core` mirror those specs.
-  - Roughly ~80% of MemoryLayer's implementation was "vibe coded" against these specs with Kiro, then finalized with tests and manual refinement.
+## Development Approach
+
+MemoryLayer was developed using Kiro's spec-driven development methodology:
+
+### Spec-Driven Development with Kiro
+
+The `.kiro/specs/` directory contains detailed specifications for all core packages and applications:
+
+**Core Packages (Specs Available)**:
+- `core-storage-layer/` → `packages/core/storage/`
+- `core-memory-extraction/` → `packages/core/memory-extraction/`
+- `core-context-engine/` → `packages/core/context-engine/`
+- `core-chat-capture/` → `packages/core/chat-capture/`
+
+**Applications (Specs Available)**:
+- `app-handoff/` → `apps/handoff/`
+- `ghost-daemon/` → `apps/ghost/daemon/`
+
+**Features (Specs Available)**:
+- `conversation-chunking/` → Conversation chunking feature in `memory-extraction`
+
+### Each Spec Contains
+
+1. **requirements.md** - Feature requirements, user stories, and acceptance criteria
+2. **design.md** - Architecture, component structure, data models, and API interfaces
+3. **tasks.md** - Granular implementation task breakdown
+
+### Development Process
+
+1. **Spec Creation**: Detailed specifications written first, defining APIs, data models, and behavior
+2. **AI-Assisted Implementation**: ~80% of initial implementation generated from specs using Kiro
+3. **Manual Refinement**: Final implementation includes comprehensive tests, bug fixes, and performance optimizations
+
+This approach enabled:
+- Rapid prototyping while maintaining architectural consistency
+- Clear documentation of design decisions
+- Easier onboarding for new contributors
+- Consistent public APIs across packages
 
 ---
 

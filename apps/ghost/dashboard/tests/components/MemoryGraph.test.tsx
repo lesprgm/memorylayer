@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render } from '@testing-library/react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { MemoryGraph } from '../../src/components/MemoryGraph';
 import type { GraphData } from '../../src/components/MemoryGraph';

@@ -112,7 +112,7 @@ Ghost uses a **multi-agent reliability layer** for critical memory extraction, i
 - **S-Level Robustness**: Handles chaos, noise, sarcasm, and even social engineering attacks
 
 **Testing Results:**  
-MAKER has been stress-tested with extreme scenarios including production incidents with reversed decisions, interleaved conversations (signal vs noise), and social engineering attacks. See [MAKER_ROBUSTNESS.md](./MAKER_ROBUSTNESS.md) for detailed test results.
+MAKER has been stress-tested with extreme scenarios including production incidents with reversed decisions, interleaved conversations (signal vs noise), and social engineering attacks.
 
 
 ---
@@ -272,42 +272,70 @@ npm test
 
 ---
 
-## 📦 What's New
+## What's New
 
 ### Latest Features (v0.2.0)
-- 👁️ **Ghost Vision**: macOS native OCR for screen reading
-- 📸 **Visual Memory**: Permanent screenshot archiving
-- 📅 **Contextual Reminders**: Apple Reminders integration with screen context
-- 🔍 **Super Spotlight**: Semantic search across all memories
--  **AI Explainability**: Memory graphs and reasoning visualization
-- 🛡️ **MAKER Reliability**: Multi-agent consensus for zero-error memory extraction
+- **Ghost Vision**: macOS native OCR for screen reading
+- **Visual Memory**: Permanent screenshot archiving
+- **Contextual Reminders**: Apple Reminders integration with screen context
+- **Super Spotlight**: Semantic search across all memories
+- **AI Explainability**: Memory graphs and reasoning visualization
+- **MAKER Reliability**: Multi-agent consensus for zero-error memory extraction
 
 ---
 
 ---
 
-## Spec-Driven Development with Kiro
+## Development Approach
 
-Ghost was developed using **Kiro**, a spec-driven development methodology that emphasizes writing comprehensive specifications before implementation. All specifications are located in the `.kiro/specs/ghost-daemon/` directory:
+Ghost was developed using Kiro's spec-driven development methodology:
 
-- **[`requirements.md`](file:///.kiro/specs/ghost-daemon/requirements.md)** - Detailed functional and non-functional requirements
-- **[`design.md`](file:///.kiro/specs/ghost-daemon/design.md)** - Architecture, component design, and technical decisions
-- **[`tasks.md`](file:///.kiro/specs/ghost-daemon/tasks.md)** - Implementation breakdown and task tracking
+### Spec-Driven Development with Kiro
 
-### Benefits of Kiro's Spec-Driven Approach
+The `.kiro/specs/ghost-daemon/` directory contains comprehensive specifications that guided Ghost's development:
 
-By using Kiro to write specifications **before** code, we achieved:
-1. **Clear Direction**: Every feature had defined requirements and acceptance criteria
-2. **Better Architecture**: Design decisions were documented and reviewed before implementation
-3. **Reduced Rework**: Issues caught in the spec phase, not during coding
-4. **Living Documentation**: Specs evolved with the project but remained the source of truth
-5. **Easier Collaboration**: New contributors can read specs to understand intent
+- **requirements.md** - Detailed functional and non-functional requirements including:
+  - Voice-first interaction with global hotkey
+  - Ghost Vision (macOS native OCR)
+  - Visual Memory (screenshot archiving)
+  - Contextual Reminders (Apple EventKit integration)
+  - Super Spotlight (semantic search)
+  - MAKER reliability layer
 
-This approach was particularly valuable for Ghost's complex multi-modal features (Vision, Reminders, Search), where upfront design prevented significant technical debt.
+- **design.md** - Complete architecture and technical design:
+  - Multi-process architecture (Daemon + Backend + Dashboard)
+  - Swift integration for Vision and EventKit
+  - MemoryLayer integration patterns
+  - Command processing flow and LLM coordination
+  - File indexing and local action execution
+
+- **tasks.md** - Granular implementation task breakdown
+
+### Key Spec-Driven Decisions
+
+1. **Multi-Process Architecture**: Separate Daemon (Electron), Backend (Node.js/Hono), and Dashboard (React) for clean separation of concerns
+2. **Swift Native Bridges**: Vision and EventKit services written in Swift for native macOS integration
+3. **Privacy-First Design**: Local OCR processing, only extracted text sent to LLM
+4. **Visual Memory System**: All screenshots permanently saved and indexed as searchable memories
+5. **MemoryLayer Integration**: Built on storage, extraction, and context-engine packages
+
+### Development Process
+
+1. **Spec Creation**: Defined complete multi-modal AI assistant architecture with native macOS integration
+2. **AI-Assisted Implementation**: ~80% of initial implementation generated from specs using Kiro
+   - Daemon architecture and hotkey handling
+   - Backend API routes and LLM coordination
+   - Dashboard components and memory visualization
+3. **Manual Refinement**:
+   - Swift native services (Vision OCR, EventKit reminders)
+   - MAKER reliability layer integration
+   - Comprehensive testing (92% coverage, 58/63 tests)
+   - Production deployment configuration
+
+This approach enabled rapid development of a complex multi-modal system while maintaining clear architecture across 5 programming languages (Swift, TypeScript, JavaScript, React, SQL).
 
 ---
 
 ## Built For
 Hackathons, power users, and anyone who wants a truly personal AI assistant that respects privacy while delivering cutting-edge multi-modal intelligence.
-
 

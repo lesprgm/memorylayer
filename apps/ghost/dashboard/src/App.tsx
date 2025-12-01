@@ -1,40 +1,62 @@
 import { useEffect, useState } from 'react';
 import { Routes, Route } from 'react-router-dom';
-import { fetchDashboardData, activateGhost } from './api';
+import { fetchDashboardData, activateGhost, streamLatestCommand } from './api';
 import type { DashboardData } from './types';
 import { CommandDetailView } from './views/CommandDetailView';
-
-const POLL_INTERVAL = 5000;
 
 function DashboardHome() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [listening, setListening] = useState(false);
+  const [streamingText, setStreamingText] = useState<string | null>(null);
 
+  // Initial load
   useEffect(() => {
-    let mounted = true;
+    fetchDashboardData(1).then(setData).catch(err => {
+      console.error('Initial fetch failed', err);
+      setError('Failed to connect to Ghost');
+    });
+  }, []);
 
-    const load = async () => {
-      try {
-        const payload = await fetchDashboardData(1); // Only fetch latest
-        if (mounted) {
-          setData(payload);
-          setError(null);
-        }
-      } catch (err) {
-        if (mounted) {
-          setError(err instanceof Error ? err.message : 'Connection error');
-        }
+  // Real-time SSE Stream
+  useEffect(() => {
+    const closeStream = streamLatestCommand({
+      onToken: (token) => {
+        setStreamingText(prev => (prev || '') + token);
+      },
+      onFinal: (command) => {
+        setStreamingText(null); // Clear streaming text
+        setData(prev => {
+          if (!prev) {
+            return {
+              commands: [command],
+              stats: {
+                totalCommands: 1,
+                avgResponseTime: 0,
+                totalMemories: 0,
+                successRate: 100
+              }
+            };
+          }
+          // Prepend new command if not already there
+          if (prev.commands[0]?.id === command.id) return prev;
+          return {
+            ...prev,
+            commands: [command, ...prev.commands].slice(0, 50),
+            stats: {
+              ...prev.stats,
+              totalCommands: prev.stats.totalCommands + 1
+            }
+          };
+        });
+      },
+      onError: (err) => {
+        console.error('Stream error', err);
+        // Don't show error to user immediately to avoid flickering on reconnects
       }
-    };
+    });
 
-    load();
-    const interval = setInterval(load, POLL_INTERVAL);
-
-    return () => {
-      mounted = false;
-      clearInterval(interval);
-    };
+    return () => closeStream();
   }, []);
 
   const toggleListening = async () => {
@@ -43,6 +65,11 @@ function DashboardHome() {
       if (!listening) {
         // Only call API when activating (not deactivating)
         await activateGhost();
+        // Auto-turn off listening state after a timeout if no command comes in?
+        // For now, let's just rely on the user or a future event to turn it off.
+        // Actually, the "listening" state here is just a UI toggle for the button.
+        // Ideally, the backend would tell us when it stops listening.
+        setTimeout(() => setListening(false), 5000); // Reset after 5s for now
       }
     } catch (error) {
       console.error('Failed to activate Ghost:', error);
@@ -73,7 +100,16 @@ function DashboardHome() {
           onClick={toggleListening}
           aria-label={listening ? 'Stop listening' : 'Start listening'}
         >
-          <span className="status-dot" />
+          {listening ? (
+            <div className="audio-visualizer">
+              <span className="bar"></span>
+              <span className="bar"></span>
+              <span className="bar"></span>
+              <span className="bar"></span>
+            </div>
+          ) : (
+            <span className="status-dot" />
+          )}
         </button>
 
         <p className={`listening-status ${listening ? 'on' : 'off'}`}>
@@ -83,17 +119,20 @@ function DashboardHome() {
         <p className="shortcut-hint">⌥ Space</p>
       </div>
 
-      {latestCommand && (
-        <div className={`current-interaction ${latestCommand ? 'visible' : ''}`}>
+      {(latestCommand || streamingText) && (
+        <div className={`current-interaction visible`}>
           <div className="interaction-label">Latest Command</div>
-          <div className="interaction-text">{latestCommand.text}</div>
-          {latestCommand.assistant_text && (
-            <div className="interaction-response">{latestCommand.assistant_text}</div>
-          )}
+          <div className="interaction-text">
+            {latestCommand?.text || '...'}
+          </div>
+          <div className="interaction-response">
+            {streamingText || latestCommand?.assistant_text || '...'}
+            {streamingText && <span className="cursor">|</span>}
+          </div>
         </div>
       )}
 
-      {!latestCommand && !error && (
+      {!latestCommand && !streamingText && !error && (
         <div className="loading">Waiting for first command</div>
       )}
 

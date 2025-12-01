@@ -11,7 +11,7 @@ export class VoicePipeline {
     private silenceThreshold: number,
     private maxDurationMs: number,
     private window?: BrowserWindow
-  ) {}
+  ) { }
 
   async recordOnce(): Promise<Buffer> {
     if (this.isRecording) {
@@ -76,5 +76,62 @@ export class VoicePipeline {
       this.window.setTitle(body);
     }
     new Notification({ title: 'Ghost', body }).show();
+  }
+  async recordBackground(durationMs: number = 3000): Promise<Buffer> {
+    if (this.isRecording) {
+      // If already recording (e.g. active command), just return empty buffer to skip this cycle
+      return Buffer.alloc(0);
+    }
+
+    this.isRecording = true;
+    const recordFn =
+      typeof (recordModule as any).record === 'function'
+        ? (recordModule as any).record
+        : typeof (recordModule as any).default === 'function'
+          ? (recordModule as any).default
+          : null;
+
+    if (!recordFn) {
+      this.isRecording = false;
+      throw new Error('Audio recorder unavailable');
+    }
+
+    const chunks: Buffer[] = [];
+
+    return new Promise<Buffer>((resolve, reject) => {
+      let rec: any;
+      try {
+        rec = recordFn({
+          sampleRate: 16_000,
+          threshold: this.silenceThreshold,
+          verbose: false,
+          recordProgram: process.platform === 'win32' ? 'sox' : 'rec',
+          endOnSilence: true,
+          silence: '1.0', // Shorter silence for background listening
+        });
+      } catch (err) {
+        this.isRecording = false;
+        return reject(err);
+      }
+
+      const stream = rec.stream();
+
+      const timeout = setTimeout(() => {
+        rec.stop();
+      }, durationMs);
+
+      stream.on('data', (data: Buffer) => chunks.push(data));
+      stream.on('end', () => {
+        clearTimeout(timeout);
+        this.isRecording = false;
+        resolve(Buffer.concat(chunks));
+      });
+      stream.on('error', (err: Error) => {
+        clearTimeout(timeout);
+        this.isRecording = false;
+        // Don't reject, just resolve empty to keep loop alive
+        resolve(Buffer.alloc(0));
+      });
+    });
   }
 }
