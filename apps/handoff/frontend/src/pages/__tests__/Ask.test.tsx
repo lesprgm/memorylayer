@@ -5,6 +5,17 @@ import { MemoryRouter } from 'react-router-dom'
 import Ask from '../Ask'
 
 // Mock contexts
+vi.mock('../../contexts/AuthContext', () => ({
+    useAuth: () => ({
+        user: { id: 'user1', email: 'test@example.com', name: 'Test User' },
+        isAuthenticated: true,
+        isLoading: false,
+        login: vi.fn(),
+        signup: vi.fn(),
+        logout: vi.fn(),
+    }),
+}))
+
 vi.mock('../../contexts/WorkspaceContext', () => ({
     useWorkspace: () => ({
         currentWorkspace: {
@@ -37,8 +48,49 @@ vi.mock('../../lib/api', () => ({
 
 const { api } = await import('../../lib/api')
 
+// Mock hooks
+const mockCreateConversation = {
+    mutateAsync: vi.fn().mockResolvedValue({ conversation: { id: 'new-conv-id' } })
+}
+
+vi.mock('../../hooks/useChatConversation', () => ({
+    useChatConversations: vi.fn(() => ({
+        data: {
+            conversations: [
+                { id: '1', title: 'Test Conversation 1' },
+                { id: '2', title: 'Test Conversation 2' }
+            ]
+        }
+    })),
+    useChatConversation: vi.fn(() => ({
+        data: {
+            conversation: {
+                messages: []
+            }
+        }
+    })),
+    useCreateChatConversation: vi.fn(() => mockCreateConversation)
+}))
+
+// Import QueryClient for test setup
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+
+const createTestQueryClient = () =>
+    new QueryClient({
+        defaultOptions: {
+            queries: {
+                retry: false,
+            },
+        },
+    })
+
 const renderWithRouter = (component: React.ReactElement) => {
-    return render(<MemoryRouter>{component}</MemoryRouter>)
+    const queryClient = createTestQueryClient()
+    return render(
+        <QueryClientProvider client={queryClient}>
+            <MemoryRouter>{component}</MemoryRouter>
+        </QueryClientProvider>
+    )
 }
 
 const mockMemories = [
@@ -78,6 +130,7 @@ describe('Ask Page', () => {
     beforeEach(() => {
         vi.clearAllMocks()
         mockNavigate.mockClear()
+        window.HTMLElement.prototype.scrollIntoView = vi.fn()
     })
 
     describe('Basic Rendering', () => {
@@ -309,10 +362,12 @@ describe('Ask Page', () => {
             })
 
             // Mock clipboard API
-            Object.assign(navigator, {
-                clipboard: {
-                    writeText: vi.fn().mockResolvedValue(undefined),
+            const writeTextMock = vi.fn().mockResolvedValue(undefined)
+            Object.defineProperty(navigator, 'clipboard', {
+                value: {
+                    writeText: writeTextMock,
                 },
+                writable: true,
             })
 
             renderWithRouter(<Ask />)
@@ -339,10 +394,13 @@ describe('Ask Page', () => {
                 total: mockMemories.length,
             })
 
-            Object.assign(navigator, {
-                clipboard: {
-                    writeText: vi.fn().mockResolvedValue(undefined),
+            // Mock clipboard API
+            const writeTextMock = vi.fn().mockResolvedValue(undefined)
+            Object.defineProperty(navigator, 'clipboard', {
+                value: {
+                    writeText: writeTextMock,
                 },
+                writable: true,
             })
 
             renderWithRouter(<Ask />)

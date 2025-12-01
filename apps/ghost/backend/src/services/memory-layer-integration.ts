@@ -81,8 +81,47 @@ export class MemoryLayerIntegration {
             },
         });
 
-        // Note: MemoryExtractor will be initialized when needed
-        // as it requires LLM provider configuration
+        // Initialize MemoryExtractor with chunking enabled for file ingestion
+        if (!this.memoryExtractor) {
+            const geminiApiKey = process.env.GEMINI_API_KEY;
+            if (!geminiApiKey) {
+                console.warn('[MemoryLayer] GEMINI_API_KEY not set - MemoryExtractor will not be available');
+                this.initialized = true;
+                return;
+            }
+
+            // Import provider and strategy
+            const { GeminiProvider, StructuredOutputStrategy } = await import('@memorylayer/memory-extraction');
+
+            const provider = new GeminiProvider({
+                apiKey: geminiApiKey,
+                timeout: 60000,  // 60 seconds for file extraction (can be slow for large files)
+            });
+
+            const strategy = new StructuredOutputStrategy();
+
+            this.memoryExtractor = new (await import('@memorylayer/memory-extraction')).MemoryExtractor({
+                provider,
+                strategy,
+                memoryTypes: ['entity', 'fact'],
+                minConfidence: 0.7,
+                chunking: {
+                    enabled: true,
+                    maxTokensPerChunk: 32000,  // ~24k words, good for document sections
+                    strategy: 'semantic',  // Split by topic for documents
+                    overlapPercentage: 0.1,  // 10% overlap
+                    failureMode: 'continue-on-error',
+                },
+                logger: {
+                    info: (msg: string, ctx?: any) => console.log(`[MemoryExtractor] ${msg}`, ctx),
+                    warn: (msg: string, ctx?: any) => console.warn(`[MemoryExtractor] ${msg}`, ctx),
+                    error: (msg: string, ctx?: any) => console.error(`[MemoryExtractor] ${msg}`, ctx),
+                    debug: (msg: string, ctx?: any) => console.debug(`[MemoryExtractor] ${msg}`, ctx),
+                },
+            });
+
+            console.log('[MemoryLayer] MemoryExtractor initialized with chunking enabled');
+        }
 
         this.initialized = true;
         console.log('MemoryLayer integration initialized successfully');

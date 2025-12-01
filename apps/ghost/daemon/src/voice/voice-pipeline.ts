@@ -42,7 +42,7 @@ export class VoicePipeline {
           verbose: false,
           recordProgram: process.platform === 'win32' ? 'sox' : 'rec',
           endOnSilence: true,
-          silence: '2.0',
+          silence: '0.7',
         });
       } catch (err) {
         this.isRecording = false;
@@ -107,7 +107,7 @@ export class VoicePipeline {
           verbose: false,
           recordProgram: process.platform === 'win32' ? 'sox' : 'rec',
           endOnSilence: true,
-          silence: '1.0', // Shorter silence for background listening
+          silence: '0.5', // Shorter silence for background listening
         });
       } catch (err) {
         this.isRecording = false;

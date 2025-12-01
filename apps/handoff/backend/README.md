@@ -153,6 +153,12 @@ The `VECTORIZE_*` and `OPENAI_*` variables are used by the extraction pipeline:
 - **VECTORIZE**: Cloudflare Vectorize index for memory embeddings and search.
 - **OPENAI\_*** (or OpenRouter) : chat/extraction models (e.g. Claude Haiku 4.5 + text-embedding-3-small).
 
+## Database Migrations
+
+- Base schema: run [`SETUP_DATABASE.sql`](./SETUP_DATABASE.sql) in the Supabase SQL editor.
+- Ask/chat UI: apply [`migrations/004_chat_conversations.sql`](./migrations/004_chat_conversations.sql) to create `chat_conversations` and `chat_messages` (idempotent).
+- Semantic search: apply [`migrations/005_semantic_search.sql`](./migrations/005_semantic_search.sql) after enabling the `vector` extension in Supabase.
+
 ## API Overview
 
 All routes are mounted under `/api` when running via Wrangler.
@@ -207,3 +213,10 @@ Migrations: [SETUP_DATABASE.sql](./SETUP_DATABASE.sql)
 ## License
 
 MIT
+
+---
+
+## Development Approach
+
+This backend is part of the Handoff application, which was developed using Kiro's spec-driven development methodology. See the [main Handoff README](../README.md#development-approach) for complete details on the specification-driven development process and architecture decisions.
+

@@ -9,7 +9,9 @@ import { WhisperSTT } from './voice/whisper';
 import { createTextToSpeech } from './tts';
 import { ActionExecutor } from './actions/action-executor';
 import { VoiceFeedbackService } from './services/voice-feedback';
+import { WakeWordService } from './services/wake-word';
 import { fileScanner } from './files/file-scanner';
+import { streamChunksIfReady, flushChunks } from './utils/text-processing';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 if (require('electron-squirrel-startup')) {
@@ -89,7 +91,14 @@ async function triggerFileScan(): Promise<void> {
   }
 }
 
+let isCommandActive = false;
+
 async function handleHotkey(): Promise<void> {
+  if (isCommandActive) {
+    console.log('[Ghost] Command already active, ignoring hotkey');
+    return;
+  }
+  isCommandActive = true;
   const overallStart = Date.now();
   console.info('[Ghost][PERF] ⏱️  Pipeline started at', new Date().toISOString());
 
@@ -293,39 +302,12 @@ async function handleHotkey(): Promise<void> {
     // No need to await TTS; queued chunks run in the background.
   } catch (error) {
     notifyError('Command processing failed', error instanceof Error ? error.message : 'Unknown error');
+  } finally {
+    isCommandActive = false;
   }
 }
 
-function streamChunksIfReady(buffer: string[], tts: ReturnType<typeof createTextToSpeech>): boolean {
-  const text = buffer.join(' ');
-  const hasSentenceEnd = /[\.?!]/.test(text);
-  const wordCount = text.split(/\s+/).filter(Boolean).length;
 
-  // Emit when we have a sentence end or buffer is getting long
-  // Increased from 18 to 30 words to allow longer responses
-  if (hasSentenceEnd || wordCount >= 30) {
-    buffer.length = 0;
-    tts.speakQueued(text).catch((err) => console.error('[Ghost][TTS] Chunk speak failed', err));
-    return true;
-  }
-  return false;
-}
-
-async function flushChunks(
-  buffer: string[],
-  tts: ReturnType<typeof createTextToSpeech>,
-  fallback: string,
-  hasStreamed: boolean
-): Promise<void> {
-  const residual = buffer.join(' ').trim();
-  if (residual) {
-    await tts.speakQueued(residual);
-  } else if (!hasStreamed && fallback) {
-    // If we never streamed anything (e.g., streaming not available), speak the full response.
-    await tts.speakQueued(fallback);
-  }
-  buffer.length = 0;
-}
 
 function notifyError(title: string, message: string): void {
   console.error(title, message);
@@ -339,14 +321,19 @@ app.whenReady().then(() => {
 
   windowManager.createMainWindow();
   windowManager.createOverlayWindow();
+
+  // Initialize Voice Pipeline
   voicePipeline = new VoicePipeline(
     config.voice.silenceThreshold,
     config.voice.maxRecordingDuration,
     windowManager.getMainWindow() || undefined
   );
+
   createTray();
   hotkey.register();
   triggerFileScan();
+
+  // IPC Handlers
   ipcMain.handle('ghost/scan-files', async () => {
     await triggerFileScan();
     return { ok: true };
@@ -367,15 +354,32 @@ app.whenReady().then(() => {
   app.on('activate', () => {
     windowManager.ensureMainWindow();
   });
+
+  // Start wake word service
+  const wakeWordService = new WakeWordService(
+    voicePipeline,
+    stt,
+    textToSpeech,
+    async () => {
+      // The service pauses itself before calling this
+      await handleHotkey();
+    }
+  );
+
+  // Hook into hotkey handler to pause/resume wake word
+  hotkey.on('activate', () => {
+    wakeWordService.pause();
+    handleHotkey().finally(() => wakeWordService.resume());
+  });
+
+  wakeWordService.start();
 });
 
 app.on('will-quit', () => {
   hotkey.unregister();
 });
 
-hotkey.on('activate', () => {
-  handleHotkey();
-});
+
 
 function mentionsScreen(text: string): boolean {
   const lower = text.toLowerCase();

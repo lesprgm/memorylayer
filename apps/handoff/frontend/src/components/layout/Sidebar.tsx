@@ -17,7 +17,7 @@ export default function Sidebar() {
       showForPersonal: true,
     },
     {
-      name: 'Chats',
+      name: 'Conversations',
       path: '/chats',
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -28,7 +28,7 @@ export default function Sidebar() {
       showForPersonal: true,
     },
     {
-      name: 'Ask',
+      name: 'Assistant',
       path: '/ask',
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -44,35 +44,74 @@ dashboard.get('/stats', async (c) => {
   }
 });
 
+import { commandProcessor } from '../services/command-processor.js';
+
 /**
  * GET /api/dashboard/stream-latest
  * Streams the latest command's assistant_text as tokens, then emits a final event with the full payload.
- * This is meant for the dashboard to visualize “live” streaming even after a command is completed.
+ * Keeps the connection open to stream future commands as they happen.
  */
 dashboard.get('/stream-latest', async (c) => {
-  try {
-    const data = storageService.getDashboardData(1);
-    const latest = data.commands[0];
-    if (!latest) {
-      return c.stream(async (stream) => {
-        await stream.write(`event: error\ndata:${JSON.stringify({ message: 'No commands yet' })}\n\n`);
-      }, sseHeaders());
+  return c.stream(async (stream) => {
+    // 1. Send the most recent command immediately if available
+    try {
+      const data = storageService.getDashboardData(1);
+      const latest = data.commands[0];
+      if (latest) {
+        await stream.write(`event: final\ndata:${JSON.stringify({ command: latest })}\n\n`);
+      }
+    } catch (err) {
+      console.error('Failed to fetch initial latest command', err);
     }
 
-    const tokens = chunkText(latest.assistant_text || '', 8);
+    // 2. Listen for new commands
+    const onCommand = async (response: any) => {
+      try {
+        // Stream tokens simulation for the "typing" effect on the dashboard
+        // In a real scenario, we might stream tokens from the LLM directly,
+        // but here we just chunk the final response for visual effect since
+        // the dashboard expects tokens.
+        const tokens = chunkText(response.assistant_text || '', 8);
+        for (const t of tokens) {
+          await stream.write(`event: token\ndata:${JSON.stringify({ text: t })}\n\n`);
+          await new Promise(r => setTimeout(r, 50)); // Slight delay for effect
+        }
 
-    return c.stream(async (stream) => {
-      for (const t of tokens) {
-        await stream.write(`event: token\ndata:${JSON.stringify({ text: t })}\n\n`);
+        // Send final payload
+        // We need to fetch the full command structure that the dashboard expects
+        // (which includes executed_at, etc. that might be slightly different from raw response)
+        // But for now, let's construct a compatible object or fetch it fresh.
+        // Fetching fresh is safer to ensure consistency.
+        const freshData = storageService.getDashboardData(1);
+        const freshLatest = freshData.commands[0];
+
+        if (freshLatest && freshLatest.id === response.command_id) {
+          await stream.write(`event: final\ndata:${JSON.stringify({ command: freshLatest })}\n\n`);
+        } else {
+          // Fallback if fetch failed or race condition
+          await stream.write(`event: final\ndata:${JSON.stringify({ command: response })}\n\n`);
+        }
+      } catch (error) {
+        console.error('Error streaming new command', error);
       }
-      await stream.write(`event: final\ndata:${JSON.stringify({ command: latest })}\n\n`);
-    }, sseHeaders());
-  } catch (error) {
-    console.error('Dashboard stream error:', error);
-    return c.stream(async (stream) => {
-      await stream.write(`event: error\ndata:${JSON.stringify({ message: 'Stream failed' })}\n\n`);
-    }, sseHeaders());
-  }
+    };
+
+    commandProcessor.on('command_processed', onCommand);
+
+    // Keep connection alive
+    const interval = setInterval(() => {
+      stream.write(`event: ping\ndata: {}\n\n`).catch(() => { });
+    }, 15000);
+
+    // Cleanup on close
+    stream.onAbort(() => {
+      clearInterval(interval);
+      commandProcessor.off('command_processed', onCommand);
+    });
+
+    // Wait forever (until client disconnects)
+    await new Promise(() => { });
+  }, sseHeaders());
 });
 
 function sseHeaders() {

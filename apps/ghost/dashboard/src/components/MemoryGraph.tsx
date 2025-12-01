@@ -126,11 +126,15 @@ export function MemoryGraph({ data }: { data: GraphData }) {
 
         // Add icons or text inside nodes? Maybe just tooltips.
         node.append('title')
-            .text((d) => {
-                if (d.type === 'file') {
-                    return `${d.label}\n(Click to open file)`;
+            .text((d: any) => {
+                let text = `${d.label} (${d.type})`;
+                if (d.source_path) {
+                    text += `\nSource: ${d.source_path}`;
                 }
-                return `${d.label} (${d.type})`;
+                if (d.type === 'file') {
+                    text += '\n(Click to open file)';
+                }
+                return text;
             });
 
         // Labels

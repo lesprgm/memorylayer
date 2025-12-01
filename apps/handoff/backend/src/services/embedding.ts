@@ -7,10 +7,10 @@ export class EmbeddingService {
     private openai: OpenAI
     private model: string
 
-    constructor(apiKey: string, model: string = 'text-embedding-3-small') {
+    constructor(apiKey: string, model: string = 'text-embedding-3-small', baseURL?: string) {
         this.openai = new OpenAI({
             apiKey,
-            baseURL: process.env.OPENAI_BASE_URL
+            baseURL
         })
         this.model = model
     }

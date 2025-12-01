@@ -176,15 +176,24 @@ export default function Chats() {
             </div>
 
             <div className="md:w-48">
-              <select
-                value={provider}
-                onChange={(e) => handleProviderChange(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">All Providers</option>
-                <option value="openai">OpenAI</option>
-                <option value="anthropic">Anthropic</option>
-              </select>
+              <label htmlFor="provider-filter" className="sr-only">Filter by Provider</label>
+              <div className="relative">
+                <select
+                  id="provider-filter"
+                  value={provider}
+                  onChange={(e) => handleProviderChange(e.target.value)}
+                  className="w-full pl-4 pr-8 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none bg-white"
+                >
+                  <option value="">All Providers</option>
+                  <option value="openai">OpenAI</option>
+                  <option value="anthropic">Anthropic</option>
+                </select>
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500">
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -242,14 +251,32 @@ export default function Chats() {
 
         {/* Empty state */}
         {!isLoading && groups.length === 0 && (
-          <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
-            <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-            </svg>
-            <h3 className="mt-4 text-lg font-medium text-gray-900">No conversations found</h3>
-            <p className="mt-2 text-sm text-gray-600">
-              {debouncedSearch || provider ? 'Try adjusting your filters' : 'Import some conversations to get started'}
+          <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
+            <div className="mx-auto w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mb-4">
+              <svg className="h-8 w-8 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
+            </div>
+            <h3 className="text-xl font-semibold text-gray-900">No conversations yet</h3>
+            <p className="mt-2 text-gray-600 max-w-md mx-auto">
+              {debouncedSearch || provider
+                ? 'Try adjusting your filters to see more results.'
+                : 'Import your chat history from ChatGPT or Claude to start building your external brain.'}
             </p>
+
+            {!debouncedSearch && !provider && (
+              <div className="mt-6">
+                <a
+                  href="/sources"
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors shadow-sm"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                  </svg>
+                  Import Conversations
+                </a>
+              </div>
+            )}
           </div>
         )}
 
@@ -323,11 +350,28 @@ export default function Chats() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex gap-1 flex-wrap">
-                        {group.providers.map(p => (
-                          <span key={p} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
-                            {p}
-                          </span>
-                        ))}
+                        {group.providers.map(p => {
+                          const lower = p.toLowerCase()
+                          const isOpenAI = lower.includes('openai') || lower.includes('gpt')
+                          const isAnthropic = lower.includes('anthropic') || lower.includes('claude')
+                          const isGemini = lower.includes('google') || lower.includes('gemini')
+
+                          let badgeClass = 'bg-gray-100 text-gray-800 border-gray-200'
+
+                          if (isOpenAI) {
+                            badgeClass = 'bg-green-100 text-green-800 border-green-200'
+                          } else if (isAnthropic) {
+                            badgeClass = 'bg-orange-100 text-orange-800 border-orange-200'
+                          } else if (isGemini) {
+                            badgeClass = 'bg-blue-100 text-blue-800 border-blue-200'
+                          }
+
+                          return (
+                            <span key={p} className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${badgeClass}`}>
+                              {p}
+                            </span>
+                          )
+                        })}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">

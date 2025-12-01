@@ -8,11 +8,13 @@ import { llmCoordinator as defaultLlmCoordinator } from './llm-coordinator.js';
 import { memoryService as defaultMemoryService } from './memory.js';
 import { storageService as defaultStorageService } from './storage.js';
 
+import { EventEmitter } from 'node:events';
+
 /**
  * Main entry point for processing a command request end-to-end.
  * Supports dependency injection for better testability.
  */
-export class CommandProcessor {
+export class CommandProcessor extends EventEmitter {
   private contextBuilder: ContextBuilder;
   private llmCoordinator: LLMCoordinator;
   private memoryService: MemoryService;
@@ -32,6 +34,7 @@ export class CommandProcessor {
     memoryService?: MemoryService,
     storageService?: SQLiteStorage
   ) {
+    super();
     this.contextBuilder = contextBuilder || defaultContextBuilder;
     this.llmCoordinator = llmCoordinator || defaultLlmCoordinator;
     this.memoryService = memoryService || defaultMemoryService;
@@ -212,6 +215,7 @@ export class CommandProcessor {
       console.warn('Memory extraction failed:', error);
     });
 
+    this.emit('command_processed', response);
     return { ok: true, value: response };
   }
 

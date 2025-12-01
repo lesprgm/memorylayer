@@ -4,16 +4,19 @@ import { MemoryRouter } from 'react-router-dom'
 import Context from '../Context'
 
 // Mock contexts
+const mockCurrentWorkspace = {
+  id: 'ws1',
+  name: 'Test Workspace',
+  type: 'personal' as const,
+  owner_id: 'user1',
+  created_at: '2024-01-01T00:00:00Z',
+  updated_at: '2024-01-01T00:00:00Z',
+}
+
+// Mock contexts
 vi.mock('../../contexts/WorkspaceContext', () => ({
   useWorkspace: () => ({
-    currentWorkspace: {
-      id: 'ws1',
-      name: 'Test Workspace',
-      type: 'personal',
-      owner_id: 'user1',
-      created_at: '2024-01-01T00:00:00Z',
-      updated_at: '2024-01-01T00:00:00Z',
-    },
+    currentWorkspace: mockCurrentWorkspace,
   }),
 }))
 
@@ -24,18 +27,29 @@ vi.mock('../../contexts/AuthContext', () => ({
   }),
 }))
 
-// Mock API
-vi.mock('../../lib/api', () => ({
-  api: {
-    getMemories: vi.fn(),
-    updateMemory: vi.fn(),
-  },
-}))
+// Remove module mock
+// vi.mock('../../lib/api', ...)
 
-const { api } = await import('../../lib/api')
+import { api } from '../../lib/api'
+
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+
+const createTestQueryClient = () =>
+  new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
+  })
 
 const renderWithRouter = (component: React.ReactElement) => {
-  return render(<MemoryRouter>{component}</MemoryRouter>)
+  const queryClient = createTestQueryClient()
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter>{component}</MemoryRouter>
+    </QueryClientProvider>
+  )
 }
 
 const mockMemories = [
@@ -74,7 +88,7 @@ const mockMemories = [
 describe('Context Page', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(api.getMemories).mockResolvedValue({
+    vi.spyOn(api, 'getMemories').mockResolvedValue({
       memories: mockMemories,
       total: mockMemories.length,
     })
@@ -124,7 +138,7 @@ describe('Context Page', () => {
 
   describe('Empty States', () => {
     it('displays empty state when no memories', async () => {
-      vi.mocked(api.getMemories).mockResolvedValue({
+      vi.spyOn(api, 'getMemories').mockResolvedValue({
         memories: [],
         total: 0,
       })
@@ -139,7 +153,7 @@ describe('Context Page', () => {
 
   describe('Loading States', () => {
     it('displays loading indicator while fetching', () => {
-      vi.mocked(api.getMemories).mockReturnValue(new Promise(() => { }))
+      vi.spyOn(api, 'getMemories').mockReturnValue(new Promise(() => { }))
 
       renderWithRouter(<Context />)
 
@@ -149,7 +163,7 @@ describe('Context Page', () => {
 
   describe('Error Handling', () => {
     it('displays error message when fetch fails', async () => {
-      vi.mocked(api.getMemories).mockRejectedValue(new Error('Failed to fetch'))
+      vi.spyOn(api, 'getMemories').mockRejectedValue(new Error('Failed to fetch'))
 
       renderWithRouter(<Context />)
 

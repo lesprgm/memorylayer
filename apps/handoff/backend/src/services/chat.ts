@@ -15,12 +15,13 @@ export class ChatService {
         openaiApiKey: string,
         baseURL?: string,
         model: string = 'gpt-4o',
-        embeddingService?: EmbeddingService
+        embeddingService?: EmbeddingService,
+        openaiClient?: OpenAI
     ) {
         this.db = db
         this.memoryService = new MemoryService(db, embeddingService)
         this.embeddingService = embeddingService || null
-        this.openai = new OpenAI({
+        this.openai = openaiClient ?? new OpenAI({
             apiKey: openaiApiKey,
             baseURL: baseURL,
         })
@@ -39,15 +40,43 @@ export class ChatService {
             try {
                 // Generate embedding for the query
                 const queryEmbedding = await this.embeddingService.generateEmbedding(query)
+                // Always pull keyword matches first to guarantee direct hits
+                const keywordResult = await this.memoryService.getMemories({
+                    workspaceId,
+                    search: query,
+                    limit: 30
+                })
+                console.info('[KeywordSearch] workspace:', workspaceId, 'search:', query, 'rows:', keywordResult.memories.length)
+
+                // If no keyword hits, try a simplified keyword (longest token)
+                let tokenResult = keywordResult
+                if (keywordResult.memories.length === 0) {
+                    const tokens = (query.toLowerCase().match(/[a-z0-9]+/g) || [])
+                        .filter(t => t.length >= 3)
+                        .sort((a, b) => b.length - a.length)
+                    for (const token of tokens) {
+                        const res = await this.memoryService.getMemories({
+                            workspaceId,
+                            search: token,
+                            limit: 30
+                        })
+                        console.info('[KeywordSearch:token]', token, 'rows:', res.memories.length)
+                        if (res.memories.length > 0) {
+                            tokenResult = res
+                            break
+                        }
+                    }
+                }
 
                 // Perform vector similarity search
                 const similarityQuery = `
-                    SELECT m.*, 
-                           1 - (m.embedding <=> $1::vector) as similarity
+                    SELECT m.*,
+                           1 - (m.embedding <=> params.embedding) AS similarity
                     FROM memories m
-                    WHERE m.workspace_id = $2
+                    CROSS JOIN (SELECT $1::vector AS embedding, $2::uuid AS workspace_id) params
+                    WHERE m.workspace_id = params.workspace_id
                       AND m.embedding IS NOT NULL
-                    ORDER BY m.embedding <=> $1::vector
+                    ORDER BY m.embedding <=> params.embedding
                     LIMIT 10
                 `
 
@@ -55,6 +84,26 @@ export class ChatService {
                     JSON.stringify(queryEmbedding),
                     workspaceId
                 ])
+
+                // Filter out malformed rows returned by exec_sql or mocks
+                const validMemories = memories.filter(
+                    m => m && typeof m.type === 'string' && typeof m.content === 'string'
+                )
+                console.info('[VectorSearch] rows:', validMemories.length, 'ids:', validMemories.slice(0, 3).map(m => m.id))
+                console.info('[KeywordSearch] rows:', keywordResult.memories.length)
+
+                // Blend keyword results (priority) with vector results
+                const merged = new Map<string, any>()
+                for (const m of tokenResult.memories) merged.set(m.id, m)
+                for (const m of validMemories) merged.set(m.id, m)
+
+                const blended = Array.from(merged.values()).slice(0, 10)
+
+                if (blended.length === 0) {
+                    console.info('[VectorSearch] fallback to keyword search (no matches)')
+                }
+
+                memories = blended
             } catch (error) {
                 console.error('Vector search failed, falling back to keyword search:', error)
                 // Fall back to keyword search

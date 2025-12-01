@@ -212,33 +212,65 @@ export default function ConversationModal({ conversationIds, isOpen, onClose }: 
                         >
                             <Dialog.Panel className="w-full max-w-6xl transform overflow-hidden rounded-2xl bg-[var(--color-bg-primary)] shadow-2xl transition-all h-[85vh] flex flex-col">
                                 {/* Header */}
-                                <div className="flex items-center justify-between border-b border-[var(--color-border-subtle)] px-8 py-6 flex-shrink-0">
-                                    <div className="flex-1">
-                                        <Dialog.Title className="text-2xl font-bold text-[var(--color-text-primary)]">
+                                <div className="flex flex-col border-b border-[var(--color-border-subtle)] px-8 py-6 flex-shrink-0 gap-4">
+                                    {/* Breadcrumbs */}
+                                    <nav className="flex items-center text-sm text-[var(--color-text-tertiary)]">
+                                        <span className="hover:text-[var(--color-text-secondary)] cursor-pointer" onClick={onClose}>Chats</span>
+                                        <svg className="w-4 h-4 mx-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                        </svg>
+                                        <span className="font-medium text-[var(--color-text-primary)] truncate max-w-md">
                                             {conversation?.title || 'Loading...'}
-                                        </Dialog.Title>
-                                        {conversation && (
-                                            <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
-                                                {conversationIds.length > 1 ? `${conversationIds.length} merged segments · ${conversation.messages.length} messages` : `${conversation.messages.length} messages · ${new Date(conversation.created_at).toLocaleDateString()}`}
-                                            </p>
-                                        )}
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        <button
-                                            onClick={handleExport}
-                                            disabled={isExporting || !conversation}
-                                            className="btn-ios-secondary text-sm"
-                                        >
-                                            {isExporting ? 'Exporting...' : 'Export'}
-                                        </button>
-                                        <button
-                                            onClick={onClose}
-                                            className="p-2 rounded-lg hover:bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] transition-colors"
-                                        >
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                            </svg>
-                                        </button>
+                                        </span>
+                                    </nav>
+
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex-1">
+                                            <Dialog.Title className="text-2xl font-bold text-[var(--color-text-primary)]">
+                                                {conversation?.title || 'Loading...'}
+                                            </Dialog.Title>
+                                            {conversation && (
+                                                <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
+                                                    {conversationIds.length > 1 ? `${conversationIds.length} merged segments · ${conversation.messages.length} messages` : `${conversation.messages.length} messages · ${new Date(conversation.created_at).toLocaleDateString()}`}
+                                                </p>
+                                            )}
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <button
+                                                onClick={() => {
+                                                    const url = new URL(window.location.href)
+                                                    url.searchParams.set('id', conversationIds[0])
+                                                    navigator.clipboard.writeText(url.toString())
+                                                    // Could add toast here but simple alert for now or just rely on action
+                                                    const btn = document.activeElement as HTMLButtonElement
+                                                    const originalText = btn.innerText
+                                                    btn.innerText = 'Copied!'
+                                                    setTimeout(() => btn.innerText = originalText, 2000)
+                                                }}
+                                                className="btn-ios-secondary text-sm flex items-center gap-2"
+                                                disabled={!conversation}
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                                                </svg>
+                                                Share
+                                            </button>
+                                            <button
+                                                onClick={handleExport}
+                                                disabled={isExporting || !conversation}
+                                                className="btn-ios-secondary text-sm"
+                                            >
+                                                {isExporting ? 'Exporting...' : 'Export'}
+                                            </button>
+                                            <button
+                                                onClick={onClose}
+                                                className="p-2 rounded-lg hover:bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] transition-colors"
+                                            >
+                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                                </svg>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
 

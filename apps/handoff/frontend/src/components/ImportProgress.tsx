@@ -27,20 +27,20 @@ export default function ImportProgress({ status, progress, result, error }: Impo
           {status === 'completed' && 'Import Complete'}
           {status === 'failed' && 'Import Failed'}
         </h3>
-        
+
         {status === 'processing' && (
           <div className="flex items-center gap-2">
             <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
             <span className="text-sm text-gray-600">{percentage}%</span>
           </div>
         )}
-        
+
         {status === 'completed' && (
           <svg className="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
           </svg>
         )}
-        
+
         {status === 'failed' && (
           <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -59,9 +59,16 @@ export default function ImportProgress({ status, progress, result, error }: Impo
               aria-label={`Import progress: ${percentage}%`}
             />
           </div>
-          <p className="text-sm text-gray-600 mt-2">
-            Processing {progress.conversationsProcessed} of {progress.totalConversations} conversations
-          </p>
+          <div className="flex justify-between items-center mt-2">
+            <p className="text-sm text-gray-600">
+              Processing {progress.conversationsProcessed} of {progress.totalConversations} conversations
+            </p>
+            {progress.totalConversations > 0 && (
+              <p className="text-xs text-gray-500">
+                ~{Math.ceil((progress.totalConversations - progress.conversationsProcessed) * 0.5)}s remaining
+              </p>
+            )}
+          </div>
         </div>
       )}
 
@@ -80,7 +87,7 @@ export default function ImportProgress({ status, progress, result, error }: Impo
               </div>
             )}
           </div>
-          
+
           {!!result.errors && result.errors.length > 0 && (
             <div className="mt-4 pt-4 border-t border-green-300">
               <p className="text-sm font-medium text-green-900 mb-2">

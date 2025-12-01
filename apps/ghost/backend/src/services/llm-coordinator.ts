@@ -1,7 +1,7 @@
 import path from 'node:path';
 import type { Action, LLMResponse, MemoryReference, FileOpenParams } from '../types.js';
 
-const DEFAULT_MODEL = 'gemini-1a';
+const DEFAULT_MODEL = 'gemini-2.0-flash-exp';
 const DEFAULT_ENDPOINT_FOR = (model: string) =>
   `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 
@@ -99,7 +99,7 @@ export class LLMCoordinator {
       throw new Error('GEMINI_API_KEY not set');
     }
 
-    const model = process.env.MAKER_MODEL || process.env.GEMINI_MODEL || 'gemini-flash-latest';
+    const model = process.env.MAKER_MODEL || process.env.GEMINI_MODEL || 'gemini-2.0-flash-exp';
     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
     const useQueryKey = apiKey.startsWith('AIza');
     const url = useQueryKey ? `${endpoint}?key=${encodeURIComponent(apiKey)}` : endpoint;
@@ -174,7 +174,8 @@ export class LLMCoordinator {
       'Respond in strict JSON: { "assistant_text": string, "actions": Action[] }.',
       'Actions supported: "file.open" { path }, "file.scroll" { direction, amount? }, "file.index" { path }, "info.recall" { summary }, "info.summarize" { topic, sources: string[], format: "brief"|"detailed"|"timeline" }, "reminder.create" { title, notes?, dueDate? }, "search.query" { query }.  ',
       '',
-      'IMPORTANT: If memories are provided below, YOU MUST answer the user\'s question directly using the information from those memories. Do not defer to search or recall actions when you already have the answer in the memories.',
+      'IMPORTANT: If the user explicitly asks to set a reminder (e.g. "remind me", "set a reminder"), YOU MUST generate a "reminder.create" action, regardless of whether memories are provided.',
+      'If memories are provided below and the user is NOT asking for a reminder, YOU MUST answer the user\'s question directly using the information from those memories.',
       'Ignore memories of type fact.command or fact.response (those are conversation logs). Prefer factual/doc/file memories.',
       'Do NOT echo the user question or say "User asked". Provide the direct answer in 1 short sentence. If you surface info.recall, assistant_text should state that recall summary.',
       'Keep assistant_text to a direct 1-2 sentence answer with no meta commentary or "searching" preamble. If you surface an "info.recall" action, assistant_text should restate that recall summary so the user immediately hears the answer.',
@@ -428,6 +429,21 @@ export class LLMCoordinator {
       const idx = Math.floor(Math.random() * list.length);
       return list[idx];
     };
+
+    // Detect reminder intent
+    const wantsReminder = /(remind me|set a reminder|reminder)/i.test(lower);
+    if (wantsReminder) {
+      // Extract title: everything after "remind me to" or "remind me"
+      let title = commandText.replace(/.*remind me (to )?/i, '').trim();
+      if (!title) title = 'Reminder';
+
+      actions.push({
+        type: 'reminder.create',
+        params: { title }
+      });
+      assistant_text = `Setting a reminder: ${title}`;
+      return { assistant_text, actions };
+    }
 
     // Detect summarization intent
     const wantsSummary = /(summarize|summary|recap|overview|everything about)/i.test(lower);

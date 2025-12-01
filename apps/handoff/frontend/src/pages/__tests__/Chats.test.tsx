@@ -82,27 +82,60 @@ vi.mock('../../contexts/AuthContext', async () => {
 // Mock API
 vi.mock('../../lib/api', () => ({
   api: {
-    getConversations: vi.fn(),
+    getGroupedConversations: vi.fn(),
   },
 }))
 
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+
+const createTestQueryClient = () =>
+  new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
+  })
+
 const renderWithRouter = (component: React.ReactElement) => {
+  const queryClient = createTestQueryClient()
   return render(
-    <MemoryRouter>
-      <AuthProvider>
-        <WorkspaceProvider>
-          {component}
-        </WorkspaceProvider>
-      </AuthProvider>
-    </MemoryRouter>
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter>
+        <AuthProvider>
+          <WorkspaceProvider>
+            {component}
+          </WorkspaceProvider>
+        </AuthProvider>
+      </MemoryRouter>
+    </QueryClientProvider>
   )
 }
 
 describe('Chats (ConversationsList)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(apiModule.api.getConversations).mockResolvedValue({
-      conversations: mockConversations,
+
+    // Mock IntersectionObserver
+    const mockIntersectionObserver = vi.fn()
+    mockIntersectionObserver.mockReturnValue({
+      observe: () => null,
+      unobserve: () => null,
+      disconnect: () => null
+    })
+    window.IntersectionObserver = mockIntersectionObserver
+
+    vi.mocked(apiModule.api.getGroupedConversations).mockResolvedValue({
+      groups: mockConversations.map(c => ({
+        title: c.title,
+        title_normalized: c.title.toLowerCase(),
+        conversation_ids: [c.id],
+        segment_count: 1,
+        total_messages: c.message_count,
+        total_memories: c.memory_count,
+        last_active: c.updated_at,
+        providers: [c.provider]
+      })),
       total: 2,
     })
   })
@@ -134,7 +167,7 @@ describe('Chats (ConversationsList)', () => {
     fireEvent.change(providerSelect, { target: { value: 'openai' } })
 
     await waitFor(() => {
-      expect(apiModule.api.getConversations).toHaveBeenCalledWith(
+      expect(apiModule.api.getGroupedConversations).toHaveBeenCalledWith(
         expect.objectContaining({
           provider: 'openai',
         })
@@ -154,8 +187,8 @@ describe('Chats (ConversationsList)', () => {
   })
 
   it('shows empty state when no conversations', async () => {
-    vi.mocked(apiModule.api.getConversations).mockResolvedValue({
-      conversations: [],
+    vi.mocked(apiModule.api.getGroupedConversations).mockResolvedValue({
+      groups: [],
       total: 0,
     })
 

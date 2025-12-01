@@ -21,6 +21,7 @@ async function backfillEmbeddings() {
     const supabaseKey = process.env.SUPABASE_KEY
     const openaiApiKey = process.env.OPENAI_API_KEY
     const embeddingModel = process.env.OPENAI_EMBEDDING_MODEL || 'text-embedding-3-small'
+    const openaiBaseUrl = process.env.OPENAI_BASE_URL
 
     if (!supabaseUrl || !supabaseKey || !openaiApiKey) {
         console.error('Missing required environment variables')
@@ -31,7 +32,7 @@ async function backfillEmbeddings() {
     console.log('Initializing services...')
     // Initialize with mockMode: false for the script
     const db = new DatabaseClient(supabaseUrl, supabaseKey, { mockMode: false })
-    const embeddingService = new EmbeddingService(openaiApiKey, embeddingModel)
+    const embeddingService = new EmbeddingService(openaiApiKey, embeddingModel, openaiBaseUrl)
 
     console.log(`Using embedding model: ${embeddingModel}`)
 

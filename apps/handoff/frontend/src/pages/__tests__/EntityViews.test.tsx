@@ -4,29 +4,48 @@ import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import EntityView from '../EntityView'
 import { createMockMemory } from '../../__tests__/testUtils'
 
+const mockCurrentWorkspace = {
+    id: 'ws1',
+    name: 'Test Workspace',
+    type: 'personal' as const,
+    owner_id: 'user1',
+    created_at: '2024-01-01T00:00:00Z',
+    updated_at: '2024-01-01T00:00:00Z',
+}
+
 // Mock contexts
-vi.mock('../../contexts/WorkspaceContext', () => ({
-    useWorkspace: () => ({
-        currentWorkspace: {
-            id: 'ws1',
-            name: 'Test Workspace',
-            type: 'personal',
-            owner_id: 'user1',
-            created_at: '2024-01-01T00:00:00Z',
-            updated_at: '2024-01-01T00:00:00Z',
-        },
+vi.mock('../../contexts/AuthContext', () => ({
+    useAuth: () => ({
+        user: { id: 'user1', email: 'test@example.com', name: 'Test User' },
+        isAuthenticated: true,
+        isLoading: false,
+        login: vi.fn(),
+        signup: vi.fn(),
+        logout: vi.fn(),
     }),
 }))
 
-// Mock API
-vi.mock('../../lib/api', () => ({
-    api: {
-        getMemoryById: vi.fn(),
-        getMemories: vi.fn(),
-    },
+vi.mock('../../contexts/WorkspaceContext', () => ({
+    useWorkspace: () => ({
+        currentWorkspace: mockCurrentWorkspace,
+    }),
 }))
 
-const { api } = await import('../../lib/api')
+// Remove module mock
+// vi.mock('../../lib/api', ...)
+
+import { api } from '../../lib/api'
+
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+
+const createTestQueryClient = () =>
+    new QueryClient({
+        defaultOptions: {
+            queries: {
+                retry: false,
+            },
+        },
+    })
 
 const mockProjectMemory = {
     id: 'project1',
@@ -82,18 +101,27 @@ describe('ProjectView', () => {
     })
 
     const renderProjectView = (projectId = 'project1') => {
+        const queryClient = createTestQueryClient()
         return render(
-            <MemoryRouter initialEntries={[`/project/${projectId}`]}>
-                <Routes>
-                    <Route path="/project/:id" element={<EntityView />} />
-                </Routes>
-            </MemoryRouter>
+            <QueryClientProvider client={queryClient}>
+                <MemoryRouter initialEntries={[`/project/${projectId}`]}>
+                    <Routes>
+                        <Route path="/project/:id" element={<EntityView />} />
+                    </Routes>
+                </MemoryRouter>
+            </QueryClientProvider>
         )
     }
 
     describe('Basic Rendering', () => {
+        beforeEach(() => {
+            vi.clearAllMocks()
+            vi.spyOn(api, 'getMemoryById').mockResolvedValue({ memory: mockProjectMemory })
+            vi.spyOn(api, 'getMemories').mockResolvedValue({ memories: [], total: 0 })
+        })
+
         it('renders project name', async () => {
-            vi.mocked(api.getMemoryById).mockResolvedValue({ memory: mockProjectMemory })
+            // Override default mock for this specific test if needed, or rely on beforeEach
             vi.mocked(api.getMemories).mockResolvedValue({
                 memories: mockRelatedMemories,
                 total: mockRelatedMemories.length,
@@ -255,12 +283,15 @@ describe('PersonView', () => {
     })
 
     const renderPersonView = (personId = 'person1') => {
+        const queryClient = createTestQueryClient()
         return render(
-            <MemoryRouter initialEntries={[`/person/${personId}`]}>
-                <Routes>
-                    <Route path="/person/:id" element={<EntityView />} />
-                </Routes>
-            </MemoryRouter>
+            <QueryClientProvider client={queryClient}>
+                <MemoryRouter initialEntries={[`/person/${personId}`]}>
+                    <Routes>
+                        <Route path="/person/:id" element={<EntityView />} />
+                    </Routes>
+                </MemoryRouter>
+            </QueryClientProvider>
         )
     }
 
@@ -374,7 +405,7 @@ describe('PersonView', () => {
 
     describe('API Integration', () => {
         it('calls getMemoryById with correct person ID', async () => {
-            vi.mocked(api.getMemoryById).mockResolvedValue({ memory: mockPersonMemory })
+            vi.spyOn(api, 'getMemoryById').mockResolvedValue({ memory: mockPersonMemory })
             vi.mocked(api.getMemories).mockResolvedValue({
                 memories: [],
                 total: 0,
@@ -388,8 +419,8 @@ describe('PersonView', () => {
         })
 
         it('calls getMemories to fetch related memories', async () => {
-            vi.mocked(api.getMemoryById).mockResolvedValue({ memory: mockPersonMemory })
-            vi.mocked(api.getMemories).mockResolvedValue({
+            vi.spyOn(api, 'getMemoryById').mockResolvedValue({ memory: mockPersonMemory })
+            vi.spyOn(api, 'getMemories').mockResolvedValue({
                 memories: mockRelatedMemories,
                 total: mockRelatedMemories.length,
             })

@@ -8,6 +8,13 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./src/__tests__/setup.ts'],
+    pool: 'forks',
+    poolOptions: {
+      forks: {
+        singleFork: true,  // Run tests sequentially to prevent memory issues
+      },
+    },
+    testTimeout: 10000,  // Increase timeout for slower test execution
   },
   resolve: {
     alias: {

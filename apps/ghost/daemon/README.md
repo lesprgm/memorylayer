@@ -140,3 +140,16 @@ The daemon is built with:
 - **TypeScript** - Type-safe development
 - **Better-SQLite3** - Local caching (if needed)
 - **Node.js Child Process** - For Swift script execution
+
+---
+
+## Development Approach
+
+This daemon was developed using Kiro's spec-driven development methodology. The `.kiro/specs/ghost-daemon/` directory contains comprehensive specifications that guided the development of the multi-modal architecture, including:
+
+- Voice interaction and hotkey handling
+- Ghost Vision (macOS Vision framework integration)
+- Contextual Reminders (Apple EventKit integration)  
+- Local action execution and file operations
+
+See the [main Ghost README](../README.md#development-approach) for complete details on the specification-driven development process and key architectural decisions.

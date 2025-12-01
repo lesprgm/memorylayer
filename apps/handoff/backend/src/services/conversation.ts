@@ -367,9 +367,12 @@ export class ConversationService {
     }
 
     if (search) {
-      conditions.push(`(\n        LOWER(TRIM(c.title)) ILIKE $${paramIndex} OR\n        EXISTS (\n          SELECT 1 FROM messages m \n          WHERE m.conversation_id = c.id \n          AND m.content ILIKE $${paramIndex}\n        )\n      )`)
-      queryParams.push(`%${search.toLowerCase()}%`)
-      paramIndex++
+      const searchParam = `%${search.toLowerCase()}%`
+      const titleIdx = paramIndex
+      const messageIdx = paramIndex + 1
+      conditions.push(`(\n        LOWER(TRIM(c.title)) ILIKE $${titleIdx} OR\n        EXISTS (\n          SELECT 1 FROM messages m \n          WHERE m.conversation_id = c.id \n          AND m.content ILIKE $${messageIdx}\n        )\n      )`)
+      queryParams.push(searchParam, searchParam)
+      paramIndex += 2
     }
 
     const whereClause = conditions.join(' AND ')
@@ -417,4 +420,3 @@ export class ConversationService {
     }
   }
 }
-

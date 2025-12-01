@@ -66,7 +66,11 @@ function getServices(c: any) {
 
   // Initialize EmbeddingService if API key is available
   const embeddingService = c.env.OPENAI_API_KEY
-    ? new EmbeddingService(c.env.OPENAI_API_KEY, c.env.OPENAI_EMBEDDING_MODEL || 'text-embedding-3-small')
+    ? new EmbeddingService(
+      c.env.OPENAI_API_KEY,
+      c.env.OPENAI_EMBEDDING_MODEL || 'text-embedding-3-small',
+      c.env.OPENAI_BASE_URL
+    )
     : undefined
 
   const memoryService = new MemoryService(db, embeddingService)

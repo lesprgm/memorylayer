@@ -44,7 +44,7 @@ describe('VoicePipeline', () => {
             const result = await promise;
             expect(result.toString()).toBe('audio');
             expect(recordModule.record).toHaveBeenCalledWith(expect.objectContaining({
-                silence: '1.0'
+                silence: '0.5'
             }));
         });
 

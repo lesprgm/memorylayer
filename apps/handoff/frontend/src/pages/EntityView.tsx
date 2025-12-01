@@ -27,22 +27,29 @@ export default function EntityView() {
     }, [currentWorkspace, id])
 
     const loadEntity = async () => {
+        console.log('EntityView: loadEntity called', { currentWorkspace, id })
         if (!currentWorkspace || !id) return
         setIsLoading(true)
         setError(null)
         try {
+            console.log('EntityView: calling api.getMemoryById')
             const { memory: entityRes } = await api.getMemoryById(id, currentWorkspace.id)
+            console.log('EntityView: api.getMemoryById resolved', entityRes)
             setEntity(entityRes)
 
+            console.log('EntityView: calling api.getMemories')
             const { memories: relatedRes } = await api.getMemories({
                 workspaceId: currentWorkspace.id,
                 search: entityRes.content,
                 limit: 20
             })
+            console.log('EntityView: api.getMemories resolved', relatedRes)
             setRelatedMemories(relatedRes.filter(m => m.id !== id))
         } catch (err) {
+            console.error('EntityView: loadEntity error', err)
             setError(`Failed to load ${entityType} details`)
         } finally {
+            console.log('EntityView: loadEntity finally')
             setIsLoading(false)
         }
     }

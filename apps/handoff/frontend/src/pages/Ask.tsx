@@ -4,6 +4,7 @@ import { PageHeader } from '../components/PageHeader'
 import { useWorkspace } from '../contexts/WorkspaceContext'
 import { api, Memory } from '../lib/api'
 import { useChatConversations, useCreateChatConversation, useChatConversation } from '../hooks/useChatConversation'
+import MessageBubble from '../components/MessageBubble'
 
 interface Message {
   id: string
@@ -20,6 +21,7 @@ export default function Ask() {
   const [isTyping, setIsTyping] = useState(false)
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   // Fetch conversations and current conversation
   const { data: conversationsData } = useChatConversations(currentWorkspace?.id || null)
@@ -48,7 +50,12 @@ export default function Ask() {
 
   useEffect(() => {
     scrollToBottom()
-  }, [messages])
+  }, [messages, isTyping])
+
+  // Auto-focus input on mount
+  useEffect(() => {
+    inputRef.current?.focus()
+  }, [])
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -78,7 +85,7 @@ export default function Ask() {
         setCurrentConversationId(conversationId)
       }
 
-      // Call real API
+      // Call API (single call handles both generation and persistence)
       const response = await api.chat({
         message: userQuery,
         workspaceId: currentWorkspace.id,
@@ -94,18 +101,6 @@ export default function Ask() {
       }
 
       setMessages(prev => [...prev, assistantMsg])
-
-      // Save both messages to conversation
-      try {
-        await api.chat({
-          message: userQuery,
-          workspaceId: currentWorkspace.id,
-          history: messages.map(m => ({ role: m.role, content: m.content }))
-        })
-      } catch (saveErr) {
-        console.error('Failed to save messages:', saveErr)
-        // Don't block UX if save fails
-      }
     } catch (err) {
       console.error('Failed to get response', err)
 
@@ -119,12 +114,20 @@ export default function Ask() {
       setMessages(prev => [...prev, errorMsg])
     } finally {
       setIsTyping(false)
+      // Focus back on input after response
+      setTimeout(() => inputRef.current?.focus(), 100)
     }
   }
 
   const handleNewConversation = () => {
     setCurrentConversationId(null)
     setMessages([])
+    inputRef.current?.focus()
+  }
+
+  const handleQuickPrompt = (prompt: string) => {
+    setQuery(prompt)
+    inputRef.current?.focus()
   }
 
   return (
@@ -141,102 +144,96 @@ export default function Ask() {
           {/* Conversation Selector */}
           <div className="flex items-center gap-2">
             {conversationsData?.conversations && conversationsData.conversations.length > 0 && (
-              <select
-                value={currentConversationId || ''}
-                onChange={(e) => setCurrentConversationId(e.target.value || null)}
-                className="px-4 py-2 bg-white border border-[var(--color-border-subtle)] rounded-lg text-sm focus:outline-none focus:border-[var(--color-accent-blue)]"
-              >
-                <option value="">New conversation</option>
-                {conversationsData.conversations.map((conv) => (
-                  <option key={conv.id} value={conv.id}>
-                    {conv.title || `Conversation ${conv.id.slice(0, 8)}`}
-                  </option>
-                ))}
-              </select>
+              <div className="relative">
+                <select
+                  value={currentConversationId || ''}
+                  onChange={(e) => setCurrentConversationId(e.target.value || null)}
+                  className="appearance-none pl-4 pr-10 py-2 bg-white border border-[var(--color-border-subtle)] rounded-lg text-sm focus:outline-none focus:border-[var(--color-accent-blue)] cursor-pointer hover:bg-gray-50 transition-colors max-w-[200px] truncate"
+                >
+                  <option value="">Current Session</option>
+                  {conversationsData.conversations.map((conv) => (
+                    <option key={conv.id} value={conv.id}>
+                      {conv.title || `Conversation ${conv.id.slice(0, 8)}`}
+                    </option>
+                  ))}
+                </select>
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+              </div>
             )}
             <button
               onClick={handleNewConversation}
-              className="px-4 py-2 bg-[var(--color-accent-blue)] hover:bg-[var(--color-accent-blue-hover)] text-white rounded-lg text-sm font-medium transition-colors"
+              className="px-4 py-2 bg-[var(--color-accent-blue)] hover:bg-[var(--color-accent-blue-hover)] text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2 shadow-sm"
             >
-              + New Chat
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              New Chat
             </button>
           </div>
         </div>
 
         <div className="flex-1 overflow-y-auto space-y-6 py-6 pr-4">
           {messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-center space-y-6 opacity-50">
-              <div className="w-20 h-20 bg-[var(--color-bg-tertiary)] rounded-full flex items-center justify-center">
-                <svg className="w-10 h-10 text-[var(--color-text-tertiary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="flex flex-col items-center justify-center h-full text-center space-y-8 opacity-0 animate-in fade-in duration-500 fill-mode-forwards">
+              <div className="w-24 h-24 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-full flex items-center justify-center shadow-sm border border-blue-100">
+                <svg className="w-12 h-12 text-[var(--color-accent-blue)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
                 </svg>
               </div>
-              <div className="max-w-md">
-                <h3 className="text-lg font-medium text-[var(--color-text-primary)]">No messages yet</h3>
-                <p className="text-[var(--color-text-secondary)] mt-2">
-                  Ask questions like "What did we decide about the database?" or "Who is working on the mobile app?"
+              <div className="max-w-md space-y-2">
+                <h3 className="text-xl font-semibold text-[var(--color-text-primary)]">How can I help you today?</h3>
+                <p className="text-[var(--color-text-secondary)]">
+                  I can answer questions based on your imported conversations and memories.
                 </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full max-w-2xl px-4">
+                {[
+                  "What did we decide about the database?",
+                  "Who is working on the mobile app?",
+                  "Summarize the last team meeting",
+                  "What are the key risks for the project?"
+                ].map((prompt, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => handleQuickPrompt(prompt)}
+                    className="p-4 text-left text-sm bg-white border border-[var(--color-border-subtle)] rounded-xl hover:border-[var(--color-accent-blue)] hover:shadow-md transition-all group"
+                  >
+                    <span className="text-[var(--color-text-primary)] group-hover:text-[var(--color-accent-blue)] transition-colors">
+                      "{prompt}"
+                    </span>
+                  </button>
+                ))}
               </div>
             </div>
           ) : (
             messages.map((msg) => (
-              <div
+              <MessageBubble
                 key={msg.id}
-                className={`flex gap-4 ${msg.role === 'assistant' ? 'bg-transparent' : 'flex-row-reverse'}`}
-              >
-                {/* Avatar */}
-                <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium ${msg.role === 'assistant'
-                  ? 'bg-[var(--color-accent-indigo)] text-white'
-                  : 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]'
-                  }`}>
-                  {msg.role === 'assistant' ? 'AI' : 'You'}
-                </div>
-
-                {/* Message Bubble */}
-                <div className={`flex flex-col max-w-[80%] space-y-2 ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-                  <div className={`rounded-2xl px-5 py-3 text-[var(--text-base)] leading-relaxed shadow-sm ${msg.role === 'user'
-                    ? 'bg-[var(--color-accent-blue)] text-white'
-                    : 'bg-white border border-[var(--color-border-subtle)] text-[var(--color-text-primary)]'
-                    }`}>
-                    {msg.content}
-                  </div>
-
-                  {/* Sources */}
-                  {msg.sources && msg.sources.length > 0 && (
-                    <div className="w-full space-y-2 mt-2">
-                      <p className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-tertiary)] ml-1">
-                        Sources
-                      </p>
-                      <div className="grid gap-2">
-                        {msg.sources.map(source => (
-                          <div key={source.id} className="card-clean p-3 text-sm hover:border-[var(--color-accent-blue)] cursor-pointer transition-colors">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className={`badge ${source.type}`}>{source.type}</span>
-                              <span className="text-[var(--color-text-tertiary)] text-xs">
-                                {(source.confidence * 100).toFixed(0)}% match
-                              </span>
-                            </div>
-                            <p className="text-[var(--color-text-secondary)] line-clamp-2">
-                              {source.content}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
+                role={msg.role}
+                content={msg.content}
+                timestamp={msg.timestamp}
+                sources={msg.sources}
+              />
             ))
           )}
+
           {isTyping && (
-            <div className="flex gap-4">
-              <div className="w-8 h-8 rounded-full bg-[var(--color-accent-indigo)] flex items-center justify-center text-white text-xs font-medium">
+            <div className="flex gap-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+              <div className="w-8 h-8 rounded-full bg-[var(--color-accent-indigo)] flex items-center justify-center text-white text-xs font-medium shadow-sm">
                 AI
               </div>
-              <div className="bg-white border border-[var(--color-border-subtle)] rounded-2xl px-5 py-4 shadow-sm flex items-center gap-1">
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+              <div className="bg-white border border-[var(--color-border-subtle)] rounded-2xl px-5 py-4 shadow-sm flex items-center gap-2">
+                <div className="flex gap-1">
+                  <div className="w-2 h-2 bg-[var(--color-accent-blue)] rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                  <div className="w-2 h-2 bg-[var(--color-accent-blue)] rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                  <div className="w-2 h-2 bg-[var(--color-accent-blue)] rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                </div>
+                <span className="text-xs text-gray-400 font-medium ml-2">Thinking...</span>
               </div>
             </div>
           )}
@@ -245,8 +242,9 @@ export default function Ask() {
 
         {/* Input Area */}
         <div className="mt-4 relative">
-          <form onSubmit={handleSearch} className="relative">
+          <form onSubmit={handleSearch} className="relative group">
             <input
+              ref={inputRef}
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -263,6 +261,11 @@ export default function Ask() {
               </svg>
             </button>
           </form>
+          <div className="text-center mt-2">
+            <p className="text-xs text-gray-400">
+              AI can make mistakes. Please verify important information.
+            </p>
+          </div>
         </div>
       </div>
     </Layout>

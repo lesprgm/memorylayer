@@ -3,11 +3,6 @@ import { WorkspaceService } from '../services/workspace'
 import { AuthService } from '../services/auth'
 import { User } from '../types/auth'
 
-interface CreateWorkspaceRequest {
-  name: string
-  type: 'personal' | 'team'
-}
-
 interface AddMemberRequest {
   email: string
 }

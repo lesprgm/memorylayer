@@ -1,0 +1,44 @@
+{
+  "backend": {
+    "url": "http://localhost:3000",
+    "apiKey": "ghost-api-key-123"
+  },
+  "autoLaunch": true,
+  "user": {
+    "id": "user-123",
+    "workspace_id": "workspace-456"
+  },
+  "privacy": {
+    "mode": "cloud-ok",
+    "redact_emails_in_prompts": true,
+    "redact_file_paths_in_prompts": true,
+    "max_prompt_history_days": 30
+  },
+  "vision": {
+    "enabled": true,
+    "captureMode": "always" // "always" | "on-demand"
+  },
+  "voice": {
+    "sttProvider": "local-whisper",
+    "sttApiKey": "",
+    "sttModel": "default",
+    "sttEndpoint": "",
+    "ttsProvider": "elevenlabs",
+    "ttsApiKey": "YOUR_ELEVENLABS_API_KEY",
+    "ttsVoiceId": "21m00Tcm4TlvDq8ikWAM",
+    "ttsModelId": "eleven_multilingual_v2",
+    "hotkey": "Alt+Space",
+    "silenceThreshold": 0.01,
+    "maxRecordingDuration": 15000,
+    "chimeSound": ""
+  },
+  "files": {
+    "scanDirectories": [
+      "~/Downloads",
+      "~/Documents"
+    ],
+    "includeExtensions": ["pdf", "docx", "txt", "md", "pptx"],
+    "maxDepth": 3,
+    "excludePatterns": ["**/node_modules/**", "**/.git/**", "**/dist/**", "**/build/**"]
+  }
+}
