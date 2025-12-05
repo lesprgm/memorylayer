@@ -87,7 +87,7 @@ For large conversations that exceed LLM context windows, enable automatic chunki
 const extractor = new MemoryExtractor({
   provider: new OpenAIProvider({
     apiKey: process.env.OPENAI_API_KEY,
-    model: 'gpt-4-turbo',
+    model: 'gemini-flash-latest',
   }),
   strategy: new StructuredOutputStrategy(),
   
@@ -148,7 +148,7 @@ if (extracted) {
 - Graceful degradation on failures
 - Minimal latency overhead (parallel execution)
 
-**Cost**: ~3× LLM calls using Gemini Flash-8B (~$0.0003 per extraction)
+**Cost**: ~3× LLM calls using Gemini 2.0 Flash Lite
 
 ### Configuration
 
@@ -159,7 +159,7 @@ MAKER_REPLICAS=3                # Parallel microagents (default: 3)
 MAKER_VOTE_K=2                  # Voting threshold (default: 2)
 MAKER_TEMPERATURE=0.4           # LLM temperature (default: 0.4)
 MAKER_TIMEOUT=10000             # Timeout in ms (default: 10000)
-MAKER_MODEL=gemini-1.5-flash-8b # Model (default: flash-8b)
+MAKER_MODEL=gemini-flash-lite-latest # Model (default: Gemini Flash Lite Latest)
 ```
 
 Or programmatically:
@@ -201,7 +201,7 @@ npm test src/__tests__/maker-integration.test.ts  # Integration (7)
 npm test src/__tests__/maker-stress.test.ts       # Stress tests (15)
 ```
 
-**Total MAKER Coverage**: 44 tests (all passing ✓)
+**Total MAKER Coverage**: 44 tests (all passing)
 
 ## Development
 
@@ -215,6 +215,47 @@ npm test
 # Test in watch mode
 npm run test:watch
 ```
+
+## Development Approach
+
+This package was developed using Kiro's spec-driven development methodology:
+
+### Spec-Driven Development with Kiro
+
+Two separate Kiro specs guided development:
+
+1. **`.kiro/specs/core-memory-extraction/`** - Core extraction framework
+   - **requirements.md** - Memory extraction strategies, provider abstraction, deduplication
+   - **design.md** - `MemoryExtractor` architecture, extraction strategies, provider interfaces
+   - **tasks.md** - Implementation breakdown
+
+2. **`.kiro/specs/conversation-chunking/`** - Chunking system
+   - **requirements.md** - Requirements for handling 200K+ token conversations
+   - **design.md** - Chunking strategies, token counting, error handling
+   - **tasks.md** - Chunking implementation tasks
+
+### Key Spec-Driven Decisions
+
+1. **Provider-Agnostic Architecture**: Abstract provider interface enabling OpenAI, Anthropic, Gemini
+2. **Pluggable Strategies**: Extraction strategies (prompt-based, structured output, function-calling)
+3. **Conversation Chunking**: Sliding-window chunking with configurable overlap and token budgets
+4. **Deduplication**: Deterministic IDs for memory merging and updates over time
+5. **MAKER Reliability Layer**: Post-spec enhancement for multi-agent consensus extraction
+
+### Development Process
+
+1. **Spec Creation**: Defined extraction pipeline, memory type system, and chunking architecture
+2. **AI-Assisted Implementation**: ~80% of initial implementation generated from specs using Kiro
+   - Core extraction logic and strategy patterns
+   - Provider adapters and interfaces
+   - Chunking implementation with token counting
+3. **Manual Refinement**: 
+   - MAKER reliability layer (51 tests)
+   - Comprehensive chunking tests
+   - Custom memory type registration system
+   - Production optimizations and error handling
+
+The dual-spec approach enabled parallel development of core extraction and chunking features, then integrated them seamlessly.
 
 ## License
 

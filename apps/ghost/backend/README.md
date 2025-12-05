@@ -5,6 +5,7 @@ Backend API server for Ghost daemon, handling command processing, memory extract
 ## Features
 
 - **Command Processing**: Processes voice commands with LLM integration (Gemini)
+- **Memory Layer Integration**: Full integration with `@memorylayer` core packages for robust memory management.
 - **Memory Layer**: SQLite + Vector database for semantic memory storage and retrieval
 - **Screen Context**: Stores screenshot paths and OCR text as `context.screen` memories
 - **Semantic Search**: `/api/search` endpoint for fuzzy memory queries
@@ -58,12 +59,12 @@ Run tests:
 npm test
 ```
 
-Test coverage: **92%** (55/60 tests passing)
+Test coverage: **98/98 tests passing**
 
 ## Database
 
 Ghost uses SQLite with the following key tables:
-- `memories` - All memories (files, conversations, screenshots)
+- `memories` - All memories (`doc.chunk`, `fact`, `context.screen`, conversations)
 - `commands` - Command history
 - `actions` - Executed actions
 - `relationships` - Memory-to-memory links

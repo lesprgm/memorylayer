@@ -2,39 +2,13 @@
 
 **The Multi-Modal, Privacy-First AI OS Assistant.**
 
-Ghost is a voice-controlled AI that lives on your Mac, sees your screen, remembers your context, and acts on your local environment. It combines local processing with cloud intelligence to create an assistant that truly understands you.
+Ghost is a voice-controlled AI that lives on your Mac, sees your screen, remembers your context, and acts on your local environment. Built for power users, and anyone who wants a truly personal AI assistant that respects privacy while delivering cutting-edge multi-modal intelligence.
 
----
-
-## What Makes Ghost Unique
-
-Ghost combines capabilities that don't exist together in any other assistant:
-
-**Screen-Aware with Local Privacy**
-- Sees your screen using macOS Vision framework (local OCR)
-- Only extracted text sent to LLM, never raw images
-- All screenshots stored locally at `~/.ghost/screenshots/`
-
-**Persistent Visual Memory**
-- Remembers every screen you've shown it
-- Search by meaning: "What was that error I saw yesterday?"
-- Returns the exact screenshot with context
-
-**Voice-First + Native OS Integration**
-- Global hotkey (`Option+Space`) for instant access
-- Creates Apple Reminders with visual context
-- Controls files, apps, and navigation locally
-
-**AI Explainability**
-- Shows why it found each result
-- Interactive memory graph of reasoning paths
-- Not a black box
-
-**Technical Depth**
-- 5 languages: Swift (Vision + EventKit), Electron, Node.js, React, SQL
-- Multi-process architecture: Daemon + Backend + Dashboard
-- 100% local mode with SQLite + local embeddings
-- Built on MemoryLayer skeleton framework
+- **Screen-Aware**: Sees your screen using macOS Vision framework (local OCR, never sends raw images)
+-  **Persistent Memory**: Remembers every screen and conversation for semantic recall
+- 🎙️ **Voice-First**: Global hotkey + "Hey Ghost" wake word for instant access
+- 🔍 **Explainable**: Shows why it found each result with interactive memory graphs
+- **Privacy-First**: Local SQLite + embeddings, only extracted text sent to LLM
 
 ---
 
@@ -87,13 +61,15 @@ Ghost doesn't just process commands; it **remembers**. Built on a local SQLite +
 
 ### **Voice-First Interaction**
 - **Global Hotkey**: `Option+Space` (macOS) to talk instantly
+- **Wake Word**: Say "Hey Ghost" (or "Hi Ghost", "Hello Ghost") for hands-free activation
 - **Natural Conversation**: Speak naturally; Ghost understands context and intent
 - **Real-time Streaming**: Hear Ghost "thinking out loud" with low-latency responses
 - **Voice Feedback**: Ghost speaks back using ElevenLabs or system TTS
 
 ### **AI Explainability** ("Why Ghost Did This")
 Ghost is not a black box. When it recalls information, it tells you why.
-- **Smart Notifications**: "Found in March 15 meeting notes"
+- **Source Popup Overlay**: See sources inline with confidence bars and scroll-to-context
+- **Command Detail View**: Deep dive into any command with full memory graph
 - **Interactive Memory Graph**: Click to see a D3.js force-directed graph of the reasoning path
 - **Timeline View**: See the sequence of memories used to answer your question
 
@@ -113,6 +89,12 @@ Ghost uses a **multi-agent reliability layer** for critical memory extraction, i
 
 **Testing Results:**  
 MAKER has been stress-tested with extreme scenarios including production incidents with reversed decisions, interleaved conversations (signal vs noise), and social engineering attacks.
+
+### **Real-Time Dashboard**
+Live visualization of Ghost's activity with SSE (Server-Sent Events).
+- **Token Streaming**: Watch responses appear word-by-word
+- **Command History**: Browse all past commands with memory graphs
+- **Live Updates**: Dashboard updates automatically as new commands are processed
 
 
 ---
@@ -192,7 +174,7 @@ cd apps/ghost/dashboard
 npm install
 npm run dev
 ```
-*Opens at http://localhost:5173*
+*Opens at http://localhost:5174*
 
 ---
 
@@ -254,7 +236,9 @@ cd apps/ghost/daemon
 npm test
 ```
 
-**Test Coverage:** 92% (58/63 tests passing)
+**Test Coverage:**
+- **Backend:** 98/98 tests passing
+- **Daemon:** 57/62 tests passing
 -  Visual Memory
 -  Memory Consolidation
 -  E2E Flows
@@ -269,22 +253,6 @@ npm test
 - **Voice Issues**: Check microphone permissions in System Settings
 - **OCR Not Working**: Ensure macOS Vision framework is available (macOS 10.15+)
 - **Reminders Not Creating**: Grant Calendar/Reminders permissions in System Settings
-
----
-
-## What's New
-
-### Latest Features (v0.2.0)
-- **Ghost Vision**: macOS native OCR for screen reading
-- **Visual Memory**: Permanent screenshot archiving
-- **Contextual Reminders**: Apple Reminders integration with screen context
-- **Super Spotlight**: Semantic search across all memories
-- **AI Explainability**: Memory graphs and reasoning visualization
-- **MAKER Reliability**: Multi-agent consensus for zero-error memory extraction
-
----
-
----
 
 ## Development Approach
 
@@ -333,9 +301,3 @@ The `.kiro/specs/ghost-daemon/` directory contains comprehensive specifications 
    - Production deployment configuration
 
 This approach enabled rapid development of a complex multi-modal system while maintaining clear architecture across 5 programming languages (Swift, TypeScript, JavaScript, React, SQL).
-
----
-
-## Built For
-Hackathons, power users, and anyone who wants a truly personal AI assistant that respects privacy while delivering cutting-edge multi-modal intelligence.
-

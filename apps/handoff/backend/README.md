@@ -111,7 +111,7 @@ Not a wall of transcripts—just the distilled context another model actually ne
 The worker mostly does three things:
 1) Validates auth (via JWT).  
 2) Calls into Supabase via the `exec_sql` helper to run parameterized SQL.  
-3) Orchestrates MemoryLayer extraction and formats responses for the frontend (conversations, memories, handoff text).
+3) Orchestrates MemoryLayer extraction (via `src/services/import.ts` using `MemoryExtractor` + `MAKER` reliability layer) and formats responses for the frontend (conversations, memories, handoff text).
 
 
 ## Development
@@ -186,6 +186,7 @@ All routes are mounted under `/api` when running via Wrangler.
 ### Import/Export
 - `POST /import` – Import conversation JSON into a workspace (e.g. ChatGPT export)
   - Creates `conversations`, `messages`, runs extraction to produce `memories`.
+  - Uses the `personal_default` extraction profile with `StructuredOutputStrategy`.
 - `GET /handoff/export` – Build a concise, copy‑ready context block for another LLM
   - Query params: `conversation_id`, `workspace_id`
   - Response: `{ handoff: string, conversation_id, workspace_id }`
